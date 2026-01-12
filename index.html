@@ -43,21 +43,24 @@
         .hiding-for-export .drag-handle,
         .hiding-for-export .no-print { display: none !important; }
         .hiding-for-export { border: none !important; box-shadow: none !important; }
-        .hiding-for-export #capture-area { background-color: #0f172a !important; padding: 20px !important; }
+        
+        /* Ajuste de contenedor principal al exportar */
+        .hiding-for-export #capture-area { 
+            background-color: #0f172a !important; 
+            padding: 10px 15px !important; /* Padding reducido */
+        }
         
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #1e293b; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 
         /* LÓGICA DE BISERIES (PAREJAS) */
-        /* Estilo base para biseries */
         .is-superset { 
             background-color: rgba(30, 41, 59, 0.8) !important; 
             border-left: 4px solid #f97316 !important;
         }
         .is-superset h4 { color: #f97316; }
 
-        /* Parte SUPERIOR de la pareja */
         .superset-pair-top {
             margin-bottom: 0 !important;
             border-bottom: 1px solid rgba(249, 115, 22, 0.2) !important;
@@ -65,17 +68,42 @@
             border-bottom-right-radius: 0 !important;
         }
 
-        /* Parte INFERIOR de la pareja */
         .superset-pair-bottom {
             margin-top: 0 !important;
             border-top: none !important;
             border-top-left-radius: 0 !important;
             border-top-right-radius: 0 !important;
-            margin-bottom: 0.75rem !important; /* Separación después del bloque */
+            margin-bottom: 0.75rem !important; 
         }
         
-        /* Calentamiento */
         .is-warmup h4 { color: #fbbf24; }
+
+        /* --- ESTILOS COMPACTOS (Solo Exportación) --- */
+        
+        /* Reducir márgenes entre ejercicios */
+        .hiding-for-export #exercise-list > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 0.15rem !important; /* Espacio mínimo */
+        }
+        
+        /* Tarjetas más pequeñas */
+        .hiding-for-export #exercise-list > div {
+            padding: 0.35rem 0.75rem !important;
+            min-height: 0 !important;
+            border-width: 1px !important;
+        }
+        
+        /* Textos más pequeños */
+        .hiding-for-export h4 { font-size: 0.75rem !important; line-height: 1 !important; } /* Nombre Ejercicio */
+        .hiding-for-export .text-xs { font-size: 0.6rem !important; margin-top: 0 !important; } /* Series/Reps */
+        
+        /* Ajustar bloques de biseries */
+        .hiding-for-export .superset-pair-bottom { margin-bottom: 0.25rem !important; }
+        
+        /* Ajustar cabecera y pie */
+        .hiding-for-export #routine-title { font-size: 1.25rem !important; margin-bottom: 0.25rem !important; }
+        .hiding-for-export #export-logo { padding-top: 0.5rem !important; padding-bottom: 0.25rem !important; }
+        .hiding-for-export #export-watermark { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; font-size: 0.5rem !important; }
+
     </style>
 </head>
 <body class="bg-dark text-gray-200 min-h-screen flex flex-col items-center py-6 px-4 selection:bg-neon selection:text-dark">
