@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShummitoAPP Pro | Gestor de Rutinas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        neon: '#a3e635',
+                        electric: '#06b6d4',
+                        danger: '#ef4444',
+                        superset: '#f97316',
+                        warmup: '#fbbf24',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Exportación */
+        .hiding-for-export .action-buttons,
+        .hiding-for-export .drag-handle,
+        .hiding-for-export .no-print { display: none !important; }
+        .hiding-for-export { border: none !important; box-shadow: none !important; }
+        .hiding-for-export #capture-area { background-color: #0f172a !important; padding: 20px !important; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+        /* LÓGICA DE BISERIES (PAREJAS) */
+        /* Estilo base para biseries */
+        .is-superset { 
+            background-color: rgba(30, 41, 59, 0.8) !important; 
+            border-left: 4px solid #f97316 !important;
+        }
+        .is-superset h4 { color: #f97316; }
+
+        /* Parte SUPERIOR de la pareja */
+        .superset-pair-top {
+            margin-bottom: 0 !important;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.2) !important;
+            border-bottom-left-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        /* Parte INFERIOR de la pareja */
+        .superset-pair-bottom {
+            margin-top: 0 !important;
+            border-top: none !important;
+            border-top-left-radius: 0 !important;
+            border-top-right-radius: 0 !important;
+            margin-bottom: 0.75rem !important; /* Separación después del bloque */
+        }
+        
+        /* Calentamiento */
+        .is-warmup h4 { color: #fbbf24; }
+    </style>
+</head>
+<body class="bg-dark text-gray-200 min-h-screen flex flex-col items-center py-6 px-4 selection:bg-neon selection:text-dark">
+
+    <!-- Header -->
+    <header class="w-full max-w-2xl mb-6 flex justify-between items-center no-print">
+        <div>
+            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-neon to-electric tracking-tighter">
+                Shummito<span class="text-white">APP</span> <span class="text-xs align-top bg-gray-800 text-gray-400 px-1 rounded ml-1">PRO</span>
+            </h1>
+        </div>
+        <button onclick="app.toggleSettings()" class="text-gray-400 hover:text-white transition-colors">
+            <i data-lucide="settings" size="24"></i>
+        </button>
+    </header>
+
+    <!-- Panel Config -->
+    <div id="settings-panel" class="hidden w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-xl p-5 mb-8 shadow-2xl no-print">
+        <h2 class="text-electric font-bold mb-4 flex items-center gap-2">
+            <i data-lucide="database"></i> Gestión de Datos
+        </h2>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-gray-800">
+            <button onclick="app.backupData()" class="flex flex-col items-center justify-center bg-card p-3 rounded-lg border border-gray-700 hover:border-neon transition-all group">
+                <i data-lucide="download" class="mb-2 text-neon"></i>
+                <span class="text-xs font-bold">Backup (JSON)</span>
+                <span class="text-[10px] text-gray-500 text-center mt-1">Guardar rutina</span>
+            </button>
+            <label class="cursor-pointer flex flex-col items-center justify-center bg-card p-3 rounded-lg border border-gray-700 hover:border-electric transition-all group relative">
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="app.restoreData(this)">
+                <i data-lucide="upload" class="mb-2 text-electric"></i>
+                <span class="text-xs font-bold">Restaurar</span>
+                <span class="text-[10px] text-gray-500 text-center mt-1">Cargar JSON</span>
+            </label>
+        </div>
+
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Biblioteca de Ejercicios</h3>
+        <div class="flex gap-2 mb-3">
+            <input type="text" id="lib-input" placeholder="Nuevo ejercicio (ej: Sentadilla Hack)" 
+                class="flex-1 bg-dark border border-gray-600 rounded px-3 py-2 text-sm focus:border-neon outline-none">
+            <button onclick="app.addToLibraryDirect()" class="bg-gray-700 hover:bg-neon hover:text-dark px-3 rounded transition-colors">
+                <i data-lucide="plus"></i>
+            </button>
+        </div>
+        
+        <div id="library-list" class="max-h-40 overflow-y-auto custom-scroll space-y-2 pr-1"></div>
+    </div>
+
+    <!-- Área de Captura -->
+    <main id="capture-area" class="w-full max-w-2xl bg-card/50 backdrop-blur-sm p-1 rounded-2xl border border-gray-800/50 relative">
+        
+        <!-- LOGO (Oculto hasta exportar) -->
+        <div id="export-logo" class="hidden flex-col items-center justify-center pt-4 pb-2 w-full">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-2xl font-black text-white italic tracking-tighter">SHUMMITO<span class="text-neon">PRO</span></span>
+            </div>
+            <div class="h-0.5 w-32 bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+        </div>
+
+        <!-- Título -->
+        <div class="p-4 pb-0">
+            <input type="text" id="routine-title" value="Rutina de Entrenamiento" 
+                class="w-full bg-transparent text-2xl font-bold text-white placeholder-gray-600 focus:outline-none focus:border-b focus:border-neon transition-colors pb-1"
+                placeholder="Nombre de la Rutina...">
+        </div>
+
+        <!-- Formulario (No se imprime) -->
+        <div class="p-4 no-print border-b border-gray-700 mb-4">
+            <form id="workout-form" class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div class="md:col-span-5 relative">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Ejercicio</label>
+                    <input type="text" id="name" list="exercises-datalist" placeholder="Busca o escribe..." required autocomplete="off"
+                        class="w-full bg-dark border border-gray-600 rounded-lg px-3 py-2 focus:border-neon outline-none text-white text-sm">
+                    <datalist id="exercises-datalist"></datalist>
+                </div>
+                
+                <div class="md:col-span-3">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Series x Reps</label>
+                    <input type="text" id="sets-reps" placeholder="4 x 12" required
+                        class="w-full bg-dark border border-gray-600 rounded-lg px-3 py-2 focus:border-electric outline-none text-white text-sm">
+                </div>
+                
+                <div class="md:col-span-4 flex gap-2">
+                    <div class="flex-1">
+                         <label class="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Descanso</label>
+                         <input type="text" id="rest" placeholder="60" required
+                            class="w-full bg-dark border border-gray-600 rounded-lg px-3 py-2 focus:border-electric outline-none text-white text-sm">
+                    </div>
+                    
+                    <div class="flex flex-col justify-end">
+                        <div class="flex bg-dark rounded-lg border border-gray-600 p-0.5 h-[38px] items-center">
+                            <label class="cursor-pointer p-1.5 rounded hover:bg-gray-700 transition-colors" title="Calentamiento">
+                                <input type="radio" name="ex-type" value="warmup" class="sr-only peer">
+                                <i data-lucide="flame" class="w-4 h-4 text-gray-500 peer-checked:text-warmup"></i>
+                            </label>
+                            <label class="cursor-pointer p-1.5 rounded hover:bg-gray-700 transition-colors" title="Normal">
+                                <input type="radio" name="ex-type" value="normal" class="sr-only peer" checked>
+                                <i data-lucide="dumbbell" class="w-4 h-4 text-gray-500 peer-checked:text-white"></i>
+                            </label>
+                            <label class="cursor-pointer p-1.5 rounded hover:bg-gray-700 transition-colors" title="Biserie">
+                                <input type="radio" name="ex-type" value="superset" class="sr-only peer">
+                                <i data-lucide="link" class="w-4 h-4 text-gray-500 peer-checked:text-superset"></i>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-end">
+                        <button type="submit" class="bg-neon hover:bg-lime-300 text-dark w-[38px] h-[38px] rounded-lg transition-colors flex items-center justify-center shrink-0 shadow-lg shadow-neon/20">
+                            <i data-lucide="check" size="20"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista -->
+        <div id="exercise-list" class="space-y-2 p-4 min-h-[100px]"></div>
+
+        <div id="empty-state" class="text-center py-10 opacity-40 hidden">
+            <i data-lucide="dumbbell" class="mx-auto w-10 h-10 mb-2"></i>
+            <p class="text-sm">Tu rutina está vacía.</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="hidden pt-4 pb-4 text-center border-t border-gray-800" id="export-watermark">
+            <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">©ShummitoAPP</p>
+        </div>
+    </main>
+
+    <!-- Acciones -->
+    <div class="w-full max-w-2xl mt-6 flex justify-between items-center px-2 no-print">
+        <button onclick="app.clearRoutine()" class="text-xs text-red-400 hover:text-red-300 underline underline-offset-4">
+            Limpiar Rutina Actual
+        </button>
+        
+        <button onclick="app.exportToImage()" 
+            class="flex items-center gap-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:to-gray-600 text-white px-6 py-3 rounded-full shadow-lg border border-gray-600 transition-all group">
+            <i data-lucide="share-2" class="text-neon group-hover:scale-110 transition-transform"></i>
+            <span class="font-semibold">Compartir Imagen</span>
+        </button>
+    </div>
+
+    <script>
+        const app = (() => {
+            const DEFAULT_STATE = {
+                title: "Rutina de Entrenamiento",
+                exercises: [], 
+                library: ["Press de Banca", "Sentadilla", "Peso Muerto", "Dominadas", "Press Militar", "Curl con Barra"] 
+            };
+
+            let state = { ...DEFAULT_STATE };
+            const STORAGE_KEY = 'Shummito_pro_v6'; 
+            let sortableInstance = null;
+
+            const els = {
+                titleInput: document.getElementById('routine-title'),
+                form: document.getElementById('workout-form'),
+                list: document.getElementById('exercise-list'),
+                empty: document.getElementById('empty-state'),
+                datalist: document.getElementById('exercises-datalist'),
+                libraryList: document.getElementById('library-list'),
+                settingsPanel: document.getElementById('settings-panel'),
+                libInput: document.getElementById('lib-input'),
+            };
+
+            const init = () => {
+                loadFromStorage();
+                renderAll();
+                
+                if (els.list) {
+                    sortableInstance = new Sortable(els.list, {
+                        animation: 150,
+                        handle: '.drag-handle', 
+                        ghostClass: 'opacity-50',
+                        onEnd: function (evt) {
+                            const item = state.exercises.splice(evt.oldIndex, 1)[0];
+                            state.exercises.splice(evt.newIndex, 0, item);
+                            saveToStorage();
+                            renderRoutine();
+                        }
+                    });
+                }
+
+                els.form.addEventListener('submit', handleAddExercise);
+                els.titleInput.addEventListener('input', (e) => {
+                    state.title = e.target.value;
+                    saveToStorage();
+                });
+                
+                lucide.createIcons();
+            };
+
+            const saveToStorage = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            
+            const loadFromStorage = () => {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    state = { ...state, ...parsed };
+                }
+                els.titleInput.value = state.title;
+            };
+
+            const formatRest = (val) => {
+                let clean = val.trim();
+                if (!clean) return "";
+                if (clean.includes('"') || clean.includes("'")) return clean;
+                const num = parseInt(clean);
+                if (isNaN(num)) return clean;
+                return num >= 10 ? `${num}"` : `${num}'`;
+            };
+
+            const backupData = () => {
+                const safeTitle = state.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const filename = `backup_${safeTitle}_${new Date().toISOString().split('T')[0]}.json`;
+                const dataStr = JSON.stringify(state, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; a.click();
+            };
+
+            const restoreData = (input) => {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        state = JSON.parse(e.target.result);
+                        saveToStorage();
+                        renderAll();
+                    } catch (err) { alert("Error: Archivo inválido."); }
+                };
+                reader.readAsText(file);
+                input.value = ''; 
+            };
+
+            const handleAddExercise = (e) => {
+                e.preventDefault();
+                const inputs = e.target.elements;
+                let selectedType = inputs['ex-type'] ? inputs['ex-type'].value : 'normal';
+                
+                const exerciseName = inputs.name.value.trim();
+                if (exerciseName && !state.library.includes(exerciseName)) {
+                    state.library.push(exerciseName);
+                    state.library.sort();
+                }
+
+                const newEx = {
+                    id: Date.now().toString(),
+                    name: exerciseName,
+                    sets: inputs['sets-reps'].value,
+                    rest: formatRest(inputs.rest.value),
+                    type: selectedType
+                };
+
+                state.exercises.push(newEx);
+                saveToStorage();
+                renderAll(); 
+                
+                inputs.name.value = '';
+                inputs['sets-reps'].value = '';
+                inputs.rest.value = '';
+                inputs.name.focus();
+            };
+
+            const removeExercise = (id) => {
+                if(confirm("¿Quitar de la rutina?")) {
+                    state.exercises = state.exercises.filter(ex => ex.id !== id);
+                    saveToStorage();
+                    renderRoutine();
+                }
+            };
+
+            const cycleType = (id) => {
+                const exIndex = state.exercises.findIndex(e => e.id === id);
+                if (exIndex === -1) return;
+                const types = ['normal', 'superset', 'warmup'];
+                const current = state.exercises[exIndex].type || 'normal';
+                state.exercises[exIndex].type = types[(types.indexOf(current) + 1) % types.length];
+                saveToStorage();
+                renderRoutine();
+            };
+            
+            const clearRoutine = () => {
+                if(confirm("¿Borrar rutina actual?")) {
+                    state.exercises = [];
+                    saveToStorage();
+                    renderRoutine();
+                }
+            };
+
+            const addToLibraryDirect = () => {
+                const val = els.libInput.value.trim();
+                if (val && !state.library.includes(val)) {
+                    state.library.push(val);
+                    state.library.sort();
+                    saveToStorage();
+                    renderAll();
+                    els.libInput.value = '';
+                }
+            };
+
+            const removeFromLibrary = (name) => {
+                if(confirm(`¿Eliminar "${name}" de la biblioteca?`)) {
+                    state.library = state.library.filter(item => item !== name);
+                    saveToStorage();
+                    renderAll();
+                }
+            };
+
+            const renderRoutine = () => {
+                els.list.innerHTML = '';
+                if (state.exercises.length === 0) {
+                    els.empty.classList.remove('hidden');
+                } else {
+                    els.empty.classList.add('hidden');
+                    
+                    let supersetCounter = 0;
+
+                    state.exercises.forEach((ex, index) => {
+                        const el = document.createElement('div');
+                        const type = ex.type || 'normal';
+                        const isSuperset = type === 'superset';
+                        
+                        let badgeHtml = '';
+                        let colorClass = 'border-gray-700';
+                        let groupingClass = 'mb-2'; // Margen por defecto
+
+                        if (isSuperset) {
+                            supersetCounter++;
+                            
+                            // Lógica de PAREJAS (1-2, 3-4)
+                            if (supersetCounter % 2 !== 0) { 
+                                // Es impar (1, 3...). Ver si el siguiente también es superset
+                                const next = state.exercises[index + 1];
+                                if (next && next.type === 'superset') {
+                                    groupingClass = 'superset-pair-top';
+                                } else {
+                                    supersetCounter = 0; // Está solo, resetear
+                                }
+                            } else {
+                                // Es par (2, 4...). Es el cierre
+                                groupingClass = 'superset-pair-bottom';
+                            }
+
+                            colorClass = 'is-superset border-orange-500/30';
+                            badgeHtml = '<span class="text-[9px] font-bold text-superset ml-2">BISERIE</span>';
+                        } else {
+                            supersetCounter = 0; // Resetear si no es biserie
+                        }
+
+                        if (type === 'warmup') {
+                            colorClass = 'is-warmup border-gray-700';
+                            badgeHtml = '<span class="text-[9px] font-bold text-warmup ml-2">CALENTAMIENTO</span>';
+                        }
+
+                        el.className = `bg-dark border rounded-lg p-3 flex justify-between items-center group transition-all select-none ${colorClass} ${groupingClass}`;
+                        
+                        let typeIcon = 'dumbbell';
+                        let typeColor = 'text-gray-600 hover:text-white';
+                        if (type === 'superset') { typeIcon = 'link'; typeColor = 'text-superset hover:text-orange-300'; }
+                        if (type === 'warmup') { typeIcon = 'flame'; typeColor = 'text-warmup hover:text-amber-300'; }
+
+                        el.innerHTML = `
+                            <div class="flex items-center gap-3 w-full">
+                                <div class="drag-handle cursor-move text-gray-600 hover:text-white p-1">
+                                    <i data-lucide="grip-vertical" size="18"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center flex-wrap">
+                                        <h4 class="font-bold text-white leading-tight uppercase tracking-tight">${ex.name}</h4>
+                                        ${badgeHtml}
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-1 flex items-center gap-4 select-none">
+                                        <span class="text-electric font-bold font-mono uppercase">${ex.sets}</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-neon font-bold font-mono uppercase">${ex.rest}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="action-buttons flex items-center">
+                                <button onclick="app.cycleType('${ex.id}')" class="p-2 ${typeColor}" title="Cambiar Tipo">
+                                    <i data-lucide="${typeIcon}" size="14"></i>
+                                </button>
+                                <button onclick="app.removeExercise('${ex.id}')" class="text-gray-500 hover:text-red-400 p-2 ml-1">
+                                    <i data-lucide="x" size="16"></i>
+                                </button>
+                            </div>
+                        `;
+                        els.list.appendChild(el);
+                    });
+                }
+                lucide.createIcons();
+            };
+
+            const renderLibrary = () => {
+                els.libraryList.innerHTML = state.library.map(item => `
+                    <div class="flex justify-between items-center bg-card px-3 py-2 rounded text-xs border border-gray-700">
+                        <span class="text-gray-300">${item}</span>
+                        <button onclick="app.removeFromLibrary('${item}')" class="text-gray-500 hover:text-red-400">
+                            <i data-lucide="trash-2" size="14"></i>
+                        </button>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            };
+
+            const renderAll = () => {
+                renderRoutine();
+                renderLibrary();
+                els.datalist.innerHTML = state.library.map(item => `<option value="${item}">`).join('');
+            };
+
+            const toggleSettings = () => els.settingsPanel.classList.toggle('hidden');
+
+            const exportToImage = () => {
+                const captureArea = document.getElementById('capture-area');
+                const watermark = document.getElementById('export-watermark');
+                const logo = document.getElementById('export-logo');
+                
+                // Preparar vista para foto
+                captureArea.classList.add('hiding-for-export');
+                watermark.classList.remove('hidden');
+                logo.classList.remove('hidden');
+                logo.classList.add('flex');
+
+                html2canvas(captureArea, {
+                    scale: 3,
+                    backgroundColor: '#0f172a',
+                    useCORS: true
+                }).then(canvas => {
+                    // Restaurar vista
+                    captureArea.classList.remove('hiding-for-export');
+                    watermark.classList.add('hidden');
+                    logo.classList.add('hidden');
+                    logo.classList.remove('flex');
+
+                    const link = document.createElement('a');
+                    const safeTitle = state.title.replace(/[^a-z0-9]/gi, '_');
+                    link.download = `${safeTitle}.png`;
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                });
+            };
+
+            return {
+                init, handleAddExercise, removeExercise, clearRoutine,
+                addToLibraryDirect, removeFromLibrary, cycleType,
+                backupData, restoreData, toggleSettings, exportToImage
+            };
+        })();
+
+        document.addEventListener('DOMContentLoaded', app.init);
+    </script>
+</body>
+</html>
