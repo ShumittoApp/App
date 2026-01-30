@@ -59,7 +59,7 @@
             background-color: rgba(30, 41, 59, 0.8) !important; 
             border-left: 4px solid #f97316 !important;
         }
-        .is-superset h4 { color: #f97316; }
+        .is-superset .exercise-name-edit { color: #f97316; }
 
         .superset-pair-top {
             margin-bottom: 0 !important;
@@ -76,7 +76,7 @@
             margin-bottom: 0.75rem !important; 
         }
         
-        .is-warmup h4 { color: #fbbf24; }
+        .is-warmup .exercise-name-edit { color: #fbbf24; }
 
         /* --- ESTILOS COMPACTOS (Solo Exportación) --- */
         
@@ -92,8 +92,8 @@
             border-width: 1px !important;
         }
         
-        /* Textos más pequeños */
-        .hiding-for-export h4 { font-size: 0.75rem !important; line-height: 1 !important; } /* Nombre Ejercicio */
+        /* Textos más pequeños - MODIFICADO para incluir el input editable */
+        .hiding-for-export .exercise-name-edit { font-size: 0.75rem !important; line-height: 1 !important; height: auto !important; } 
         .hiding-for-export .text-xs { font-size: 0.6rem !important; margin-top: 0 !important; } /* Series/Reps */
         
         /* Ajustar bloques de biseries */
@@ -370,6 +370,27 @@
                 inputs.name.focus();
             };
 
+            // NUEVA FUNCIÓN MEJORADA: Actualizar nombre y guardar en biblioteca
+            const updateExerciseName = (id, newName) => {
+                const ex = state.exercises.find(e => e.id === id);
+                if (ex) {
+                    ex.name = newName;
+
+                    // Agregar a la biblioteca si es nuevo
+                    const trimmedName = newName.trim();
+                    if (trimmedName && !state.library.includes(trimmedName)) {
+                        state.library.push(trimmedName);
+                        state.library.sort();
+                        // Actualizar UI de biblioteca y datalist (pero no la lista de ejercicios para no perder foco)
+                        renderLibrary();
+                        els.datalist.innerHTML = state.library.map(item => `<option value="${item}">`).join('');
+                    }
+
+                    saveToStorage();
+                    // No llamamos a renderRoutine aquí para no perder el foco mientras escribes
+                }
+            };
+
             const removeExercise = (id) => {
                 if(confirm("¿Quitar de la rutina?")) {
                     state.exercises = state.exercises.filter(ex => ex.id !== id);
@@ -431,34 +452,32 @@
                         
                         let badgeHtml = '';
                         let colorClass = 'border-gray-700';
-                        let groupingClass = 'mb-2'; // Margen por defecto
+                        let groupingClass = 'mb-2'; 
 
                         if (isSuperset) {
                             supersetCounter++;
                             
                             // Lógica de PAREJAS (1-2, 3-4)
                             if (supersetCounter % 2 !== 0) { 
-                                // Es impar (1, 3...). Ver si el siguiente también es superset
                                 const next = state.exercises[index + 1];
                                 if (next && next.type === 'superset') {
                                     groupingClass = 'superset-pair-top';
                                 } else {
-                                    supersetCounter = 0; // Está solo, resetear
+                                    supersetCounter = 0; 
                                 }
                             } else {
-                                // Es par (2, 4...). Es el cierre
                                 groupingClass = 'superset-pair-bottom';
                             }
 
                             colorClass = 'is-superset border-orange-500/30';
-                            badgeHtml = '<span class="text-[9px] font-bold text-superset ml-2">BISERIE</span>';
+                            badgeHtml = '<span class="text-[9px] font-bold text-superset ml-2 shrink-0">BISERIE</span>';
                         } else {
-                            supersetCounter = 0; // Resetear si no es biserie
+                            supersetCounter = 0; 
                         }
 
                         if (type === 'warmup') {
                             colorClass = 'is-warmup border-gray-700';
-                            badgeHtml = '<span class="text-[9px] font-bold text-warmup ml-2">CALENTAMIENTO</span>';
+                            badgeHtml = '<span class="text-[9px] font-bold text-warmup ml-2 shrink-0">CALENTAMIENTO</span>';
                         }
 
                         el.className = `bg-dark border rounded-lg p-3 flex justify-between items-center group transition-all select-none ${colorClass} ${groupingClass}`;
@@ -468,14 +487,18 @@
                         if (type === 'superset') { typeIcon = 'link'; typeColor = 'text-superset hover:text-orange-300'; }
                         if (type === 'warmup') { typeIcon = 'flame'; typeColor = 'text-warmup hover:text-amber-300'; }
 
+                        // MODIFICACIÓN: Se cambió el <h4> por un <input> editable
                         el.innerHTML = `
                             <div class="flex items-center gap-3 w-full">
                                 <div class="drag-handle cursor-move text-gray-600 hover:text-white p-1">
                                     <i data-lucide="grip-vertical" size="18"></i>
                                 </div>
-                                <div class="flex-1">
-                                    <div class="flex items-center flex-wrap">
-                                        <h4 class="font-bold text-white leading-tight uppercase tracking-tight">${ex.name}</h4>
+                                <div class="flex-1 w-full min-w-0">
+                                    <div class="flex items-center flex-wrap w-full">
+                                        <input type="text" value="${ex.name}" 
+                                            onchange="app.updateExerciseName('${ex.id}', this.value)"
+                                            class="exercise-name-edit font-bold text-white leading-tight uppercase tracking-tight bg-transparent border-b border-transparent focus:border-neon focus:outline-none w-full mr-2" 
+                                        />
                                         ${badgeHtml}
                                     </div>
                                     <div class="text-xs text-gray-400 mt-1 flex items-center gap-4 select-none">
@@ -486,7 +509,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="action-buttons flex items-center">
+                            <div class="action-buttons flex items-center shrink-0 ml-2">
                                 <button onclick="app.cycleType('${ex.id}')" class="p-2 ${typeColor}" title="Cambiar Tipo">
                                     <i data-lucide="${typeIcon}" size="14"></i>
                                 </button>
@@ -526,7 +549,24 @@
                 const watermark = document.getElementById('export-watermark');
                 const logo = document.getElementById('export-logo');
                 
-                // Preparar vista para foto
+                // 1. Preparar inputs para exportación (cambiar a texto estático para evitar problemas con html2canvas)
+                const inputs = document.querySelectorAll('.exercise-name-edit');
+                const tempSpans = [];
+
+                inputs.forEach(input => {
+                    const span = document.createElement('span');
+                    span.textContent = input.value;
+                    span.className = input.className; // Copiar estilos exactos
+                    // Asegurar que el span se comporte visualmente igual que el input
+                    span.style.display = 'inline-block'; 
+                    
+                    // Insertar span antes del input y ocultar input
+                    input.parentNode.insertBefore(span, input);
+                    input.style.display = 'none';
+                    tempSpans.push({ span, input });
+                });
+
+                // 2. Preparar vista general (watermark, logo, estilos compactos)
                 captureArea.classList.add('hiding-for-export');
                 watermark.classList.remove('hidden');
                 logo.classList.remove('hidden');
@@ -537,11 +577,17 @@
                     backgroundColor: '#0f172a',
                     useCORS: true
                 }).then(canvas => {
-                    // Restaurar vista
+                    // 3. Restaurar vista general
                     captureArea.classList.remove('hiding-for-export');
                     watermark.classList.add('hidden');
                     logo.classList.add('hidden');
                     logo.classList.remove('flex');
+
+                    // 4. Restaurar inputs (eliminar spans temporales)
+                    tempSpans.forEach(({ span, input }) => {
+                        span.remove();
+                        input.style.display = '';
+                    });
 
                     const link = document.createElement('a');
                     const safeTitle = state.title.replace(/[^a-z0-9]/gi, '_');
@@ -554,7 +600,8 @@
             return {
                 init, handleAddExercise, removeExercise, clearRoutine,
                 addToLibraryDirect, removeFromLibrary, cycleType,
-                backupData, restoreData, toggleSettings, exportToImage
+                backupData, restoreData, toggleSettings, exportToImage,
+                updateExerciseName // Exportamos la nueva función
             };
         })();
 
