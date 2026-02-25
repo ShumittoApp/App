@@ -19,6 +19,7 @@
                         electric: '#06b6d4',
                         danger: '#ef4444',
                         superset: '#f97316',
+                        triset: '#d946ef',
                         warmup: '#fbbf24',
                     },
                     fontFamily: {
@@ -75,6 +76,36 @@
             border-top-right-radius: 0 !important;
             margin-bottom: 0.75rem !important; 
         }
+
+        /* LÓGICA DE TRISERIES */
+        .is-triset { 
+            background-color: rgba(30, 41, 59, 0.8) !important; 
+            border-left: 4px solid #d946ef !important;
+        }
+        .is-triset .exercise-name-edit { color: #d946ef; }
+
+        .triset-group-top {
+            margin-bottom: 0 !important;
+            border-bottom: 1px solid rgba(217, 70, 239, 0.2) !important;
+            border-bottom-left-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .triset-group-middle {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-top: none !important;
+            border-bottom: 1px solid rgba(217, 70, 239, 0.2) !important;
+            border-radius: 0 !important;
+        }
+
+        .triset-group-bottom {
+            margin-top: 0 !important;
+            border-top: none !important;
+            border-top-left-radius: 0 !important;
+            border-top-right-radius: 0 !important;
+            margin-bottom: 0.75rem !important; 
+        }
         
         .is-warmup .exercise-name-edit { color: #fbbf24; }
 
@@ -98,6 +129,7 @@
         
         /* Ajustar bloques de biseries */
         .hiding-for-export .superset-pair-bottom { margin-bottom: 0.25rem !important; }
+        .hiding-for-export .triset-group-bottom { margin-bottom: 0.25rem !important; }
         
         /* Ajustar cabecera y pie */
         .hiding-for-export #routine-title { font-size: 1.25rem !important; margin-bottom: 0.25rem !important; }
@@ -206,6 +238,10 @@
                             <label class="cursor-pointer p-1.5 rounded hover:bg-gray-700 transition-colors" title="Biserie">
                                 <input type="radio" name="ex-type" value="superset" class="sr-only peer">
                                 <i data-lucide="link" class="w-4 h-4 text-gray-500 peer-checked:text-superset"></i>
+                            </label>
+                            <label class="cursor-pointer p-1.5 rounded hover:bg-gray-700 transition-colors" title="Triserie">
+                                <input type="radio" name="ex-type" value="triset" class="sr-only peer">
+                                <i data-lucide="layers" class="w-4 h-4 text-gray-500 peer-checked:text-triset"></i>
                             </label>
                         </div>
                     </div>
@@ -402,7 +438,7 @@
             const cycleType = (id) => {
                 const exIndex = state.exercises.findIndex(e => e.id === id);
                 if (exIndex === -1) return;
-                const types = ['normal', 'superset', 'warmup'];
+                const types = ['normal', 'superset', 'triset', 'warmup'];
                 const current = state.exercises[exIndex].type || 'normal';
                 state.exercises[exIndex].type = types[(types.indexOf(current) + 1) % types.length];
                 saveToStorage();
@@ -444,17 +480,20 @@
                     els.empty.classList.add('hidden');
                     
                     let supersetCounter = 0;
+                    let trisetCounter = 0;
 
                     state.exercises.forEach((ex, index) => {
                         const el = document.createElement('div');
                         const type = ex.type || 'normal';
                         const isSuperset = type === 'superset';
+                        const isTriset = type === 'triset';
                         
                         let badgeHtml = '';
                         let colorClass = 'border-gray-700';
                         let groupingClass = 'mb-2'; 
 
                         if (isSuperset) {
+                            trisetCounter = 0;
                             supersetCounter++;
                             
                             // Lógica de PAREJAS (1-2, 3-4)
@@ -471,8 +510,36 @@
 
                             colorClass = 'is-superset border-orange-500/30';
                             badgeHtml = '<span class="text-[9px] font-bold text-superset ml-2 shrink-0">BISERIE</span>';
+                        } else if (isTriset) {
+                            supersetCounter = 0;
+                            trisetCounter++;
+                            
+                            const pos = trisetCounter % 3;
+                            
+                            if (pos === 1) {
+                                const next1 = state.exercises[index + 1];
+                                if (next1 && next1.type === 'triset') {
+                                    groupingClass = 'triset-group-top';
+                                } else {
+                                    trisetCounter = 0;
+                                }
+                            } else if (pos === 2) {
+                                const next1 = state.exercises[index + 1];
+                                if (next1 && next1.type === 'triset') {
+                                    groupingClass = 'triset-group-middle';
+                                } else {
+                                    groupingClass = 'triset-group-bottom';
+                                    trisetCounter = 0;
+                                }
+                            } else {
+                                groupingClass = 'triset-group-bottom';
+                            }
+
+                            colorClass = 'is-triset border-fuchsia-500/30';
+                            badgeHtml = '<span class="text-[9px] font-bold text-triset ml-2 shrink-0">TRISERIE</span>';
                         } else {
                             supersetCounter = 0; 
+                            trisetCounter = 0;
                         }
 
                         if (type === 'warmup') {
@@ -485,6 +552,7 @@
                         let typeIcon = 'dumbbell';
                         let typeColor = 'text-gray-600 hover:text-white';
                         if (type === 'superset') { typeIcon = 'link'; typeColor = 'text-superset hover:text-orange-300'; }
+                        if (type === 'triset') { typeIcon = 'layers'; typeColor = 'text-triset hover:text-fuchsia-300'; }
                         if (type === 'warmup') { typeIcon = 'flame'; typeColor = 'text-warmup hover:text-amber-300'; }
 
                         // MODIFICACIÓN: Se cambió el <h4> por un <input> editable
